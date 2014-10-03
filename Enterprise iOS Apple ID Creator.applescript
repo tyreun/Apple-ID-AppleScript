@@ -881,7 +881,6 @@ on AgreeToTerms()
 		set curExpectedElementString to "Warunki oraz Ochrona prywatności firmy Apple"
 		set curExpectedElementLocation to "Warunki oraz Ochrona prywatności firmy Apple"
 	end if
-	
 	--end localization
 	
 	set pageVerification to verifyPage(curExpectedElementString, curExpectedElementLocation, 16, netDelay, false) ----------Verify we are at page 1 of the Apple ID creation page
@@ -1140,8 +1139,6 @@ on ProvidePaymentDetails(userFirstName, userLastName, addressStreet, addressCity
 				set curCityFieldName to "Town"
 				set curCityFieldPos to 2
 			end if
-			
-			
 			--end localization
 			try
 				set value of text field curCityFieldName of group curCityFieldPos of group 10 of theForm to addressCity
@@ -1157,8 +1154,6 @@ on ProvidePaymentDetails(userFirstName, userLastName, addressStreet, addressCity
 			if iTunesCountryCode is "FRA" then
 				set enableProvince to false
 			end if
-			
-			
 			--end localization
 			
 			if enableProvince is true then
@@ -1172,7 +1167,6 @@ on ProvidePaymentDetails(userFirstName, userLastName, addressStreet, addressCity
 			end if
 			-----------
 			--start localization
-			
 			set curPostalCodeFieldName to "Zip"
 			set curPostalCodeFieldPos to 3
 			set enableAreaCode to true
@@ -1185,7 +1179,6 @@ on ProvidePaymentDetails(userFirstName, userLastName, addressStreet, addressCity
 				set curPostalCodeFieldPos to 1
 				set enableAreaCode to false
 			end if
-			
 			--end localization
 			
 			try
