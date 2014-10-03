@@ -38,6 +38,7 @@ end tell
 --Set country code to adapt script, code according to http://en.wikipedia.org/wiki/ISO_3166-1_alpha-3
 -- Set iTunesCountryCode to your country code and adjust specific parts of code between 'start localization' and 'end localization' to your needs.
 property iTunesCountryCode : ""
+--property iTunesCountryCode : "FRA"
 --property iTunesCountryCode : "POL"
 --end localization
 
@@ -880,6 +881,7 @@ on AgreeToTerms()
 		set curExpectedElementString to "Warunki oraz Ochrona prywatności firmy Apple"
 		set curExpectedElementLocation to "Warunki oraz Ochrona prywatności firmy Apple"
 	end if
+	
 	--end localization
 	
 	set pageVerification to verifyPage(curExpectedElementString, curExpectedElementLocation, 16, netDelay, false) ----------Verify we are at page 1 of the Apple ID creation page
@@ -895,6 +897,10 @@ on AgreeToTerms()
 			
 			if iTunesCountryCode is "POL" then
 				set curCheckBox to "Aby móc używać tej usługi, zapoznaj się z przedstawionymi warunkami i zasadami oraz wyraź na nie zgodę."
+				set curCheckBoxNum to 5
+			end if
+			if iTunesCountryCode is "FRA" then
+				set curCheckBox to "I have read and agree to these terms and conditions."
 				set curCheckBoxNum to 5
 			end if
 			--end localization
@@ -1038,6 +1044,9 @@ on ProvideAppleIdDetails(appleIdEmail, appleIdPassword, appleIdSecretQuestion1, 
 				if iTunesCountryCode is "POL" then
 					set curMonthPos to 2
 					set curDayPos to 1
+				if iTunesCountryCode is "FRA" then
+					set curMonthPos to 2
+					set curDayPos to 1
 				end if
 				--end localization
 				
@@ -1127,6 +1136,12 @@ on ProvidePaymentDetails(userFirstName, userLastName, addressStreet, addressCity
 				set curCityFieldName to "Town"
 				set curCityFieldPos to 2
 			end if
+			if iTunesCountryCode is "FRA" then
+				set curCityFieldName to "Town"
+				set curCityFieldPos to 2
+			end if
+			
+			
 			--end localization
 			try
 				set value of text field curCityFieldName of group curCityFieldPos of group 10 of theForm to addressCity
@@ -1139,6 +1154,11 @@ on ProvidePaymentDetails(userFirstName, userLastName, addressStreet, addressCity
 			if iTunesCountryCode is "POL" then
 				set enableProvince to false
 			end if
+			if iTunesCountryCode is "FRA" then
+				set enableProvince to false
+			end if
+			
+			
 			--end localization
 			
 			if enableProvince is true then
@@ -1152,12 +1172,20 @@ on ProvidePaymentDetails(userFirstName, userLastName, addressStreet, addressCity
 			end if
 			-----------
 			--start localization
+			
 			set curPostalCodeFieldName to "Zip"
 			set curPostalCodeFieldPos to 3
+			set enableAreaCode to true
 			if iTunesCountryCode is "POL" then
 				set curPostalCodeFieldName to "Postcode"
 				set curPostalCodeFieldPos to 1
 			end if
+			if iTunesCountryCode is "FRA" then
+				set curPostalCodeFieldName to "Postcode"
+				set curPostalCodeFieldPos to 1
+				set enableAreaCode to false
+			end if
+			
 			--end localization
 			
 			try
@@ -1166,17 +1194,27 @@ on ProvidePaymentDetails(userFirstName, userLastName, addressStreet, addressCity
 				set errorList to errorList & "Unable to set ''Postal Code'' field to " & addressZip
 			end try
 			-----------
-			try
-				set value of text field "Area code" of group 1 of group 11 of theForm to phoneAreaCode
-			on error
-				set errorList to errorList & "Unable to set ''Area Code'' field to " & phoneAreaCode
-			end try
-			-----------
-			try
-				set value of text field "Phone" of group 2 of group 11 of theForm to phoneNumber
-			on error
-				set errorList to errorList & "Unable to set ''Phone Number'' field to " & phoneNumber
-			end try
+			if enableAreaCode is true then
+				try
+					set value of text field "Area code" of group 1 of group 11 of theForm to phoneAreaCode
+				on error
+					set errorList to errorList & "Unable to set ''Area Code'' field to " & phoneAreaCode
+				end try
+				
+				-----------
+				try
+					set value of text field "Phone" of group 2 of group 11 of theForm to phoneNumber
+				on error
+					set errorList to errorList & "Unable to set ''Phone Number'' field to " & phoneNumber
+				end try
+			else
+				try
+					set value of text field "Phone" of group 1 of group 11 of theForm to phoneNumber
+				on error
+					set errorList to errorList & "Unable to set ''Phone Number'' field to " & phoneNumber
+				end try
+			end if
+			
 			-----------
 			
 			my CheckForErrors()
