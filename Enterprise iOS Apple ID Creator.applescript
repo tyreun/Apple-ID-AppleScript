@@ -1,3 +1,59 @@
+(*
+code to find all elements on iTunes page, for use with "verifyPage()"
+
+tell application "System Events"
+	set elementCount to count of every UI element of UI element 1 of scroll area 3 of window 1 of application process "iTunes"
+	set everyElement to every UI element of UI element 1 of scroll area 3 of window 1 of application process "iTunes"
+
+	set everyProperty to {}
+	repeat with loopCounter from 1 to (count of items in everyElement)
+		try
+			set everyProperty to everyProperty & 1
+			set item loopCounter of everyProperty to (properties of item loopCounter of everyElement)
+		end try
+	end repeat
+
+	set everyTitle to {}
+	repeat with loopCounter from 1 to (count of items in everyProperty)
+		set everyTitle to everyTitle & ""
+		try
+			set item loopCounter of everyTitle to (title of item loopCounter of everyProperty)
+		end try
+	end repeat
+
+end tell
+
+*)
+
+--TO DO:
+
+--write itunes running check
+--write file output section for account status column
+--write check for account status of "completed" or "skipped"
+
+--Global Vars
+
+
+--start localization
+--Set country code to adapt script, code according to http://en.wikipedia.org/wiki/ISO_3166-1_alpha-3
+-- Set iTunesCountryCode to your country code and adjust specific parts of code between 'start localization' and 'end localization' to your needs.
+property iTunesCountryCode : ""
+--property iTunesCountryCode : "FRA"
+--property iTunesCountryCode : "POL"
+--end localization
+
+--Used for storing a list of encountered errors. Written to by various handlers, read by checkForErrors()
+global errorList
+set errorList to {}
+
+--Used for controlling the running or abortion of the script. Handler will run as long as scriptAction is "Continue". Can also be set to "Abort" to end script, or "Skip User" to skip an individual user.
+global scriptAction
+set scriptAction to "Continue"
+
+--Store the current user number (based off line number in CSV file)
+global currentUser
+set currentUserNumber to 0
+
 --Used for completing every step in the process, except actually creating the Apple ID. Also Pauses the script at various locations so the user can verify everything is working properly.
 property dryRun : true
 
@@ -15,13 +71,13 @@ property netDelay : 30
 property processDelay : 1
 
 --How often should the script check that something has loaded/is ready
-property checkFrequency : 0.25
+property checkFrequency : 0.5
 
 --Used to store supported iTunes versions
-property supportedItunesVersions : {"11.2.2", "11.3", "11.3.1"}
+property supportedItunesVersions : {"11.2.2", "11.3", "11.3.1", "11.4"}
 
 --Used for checking if iTunes is loading a page
-property itunesAccessingString : "Accessing iTunes Store�"
+property itunesAccessingString : "Accessing iTunes Store…"
 
 (*
 	Email
@@ -69,77 +125,23 @@ property phoneNumberHeaders : {"Phone Number", "Phone"}
 property rescueEmailHeaders : {"Rescue Email (Optional)", "Rescue Email"}
 property accountStatusHeaders : {"Account Status"} --Used to keep track of what acounts have been created
 
-property is_interactive : true
 
-(*
-code to find all elements on iTunes page, for use with "verifyPage()"
-
-tell application "System Events"
-	set elementCount to count of every UI element of UI element 1 of scroll area 3 of window 1 of application process "iTunes"
-	set everyElement to every UI element of UI element 1 of scroll area 3 of window 1 of application process "iTunes"
-
-	set everyProperty to {}
-	repeat with loopCounter from 1 to (count of items in everyElement)
-		try
-			set everyProperty to everyProperty & 1
-			set item loopCounter of everyProperty to (properties of item loopCounter of everyElement)
-		end try
-	end repeat
-
-	set everyTitle to {}
-	repeat with loopCounter from 1 to (count of items in everyProperty)
-		set everyTitle to everyTitle & ""
-		try
-			set item loopCounter of everyTitle to (title of item loopCounter of everyProperty)
-		end try
-	end repeat
-
-end tell
-
-*)
-
---TO DO:
-
---write itunes running check
---write file output section for account status column
---write check for account status of "completed" or "skipped"
-
---Global Vars
---Used for robotic implementation of the script
-
---Used for storing a list of encountered errors. Written to by various handlers, read by checkForErrors()
-global errorList
-set errorList to {}
-
---Used for controlling the running or abortion of the script. Handler will run as long as scriptAction is "Continue". Can also be set to "Abort" to end script, or "Skip User" to skip an individual user.
-global scriptAction
-set scriptAction to "Continue"
-
---Store the current user number (based off line number in CSV file)
-global currentUser
-set currentUserNumber to 0
+--Supported descriptions of iTunes free button
+property supportedFreeButtonDescriptions : {"$0.00 Free, iBooks", "0,00 € Free, iBooks"}
 
 set userDroppedFile to false
 
---Launch the script in interactive mode if no file was dropped (if file was dropped on script, this will never be run, because of the "on open" above)
-set droppedFile to ""
-if is_interactive then MainMagic(userDroppedFile, droppedFile)
-
-
-
-
-
-
-
 --Check to see if a file was dropped on this script
 on open droppedFile
-	set is_interactive to true
 	set userDroppedFile to true
 	MainMagic(userDroppedFile, droppedFile)
 end open
 
+--Launch the script in interactive mode if no file was dropped (if file was dropped on script, this will never be run, because of the "on open" above)
+set droppedFile to ""
+MainMagic(userDroppedFile, droppedFile)
+
 on MainMagic(userDroppedFile, droppedFile)
-	
 	--CHECK ITUNES SUPPORT-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------CHECK ITUNES SUPPORT--
 	
 	set itunesVersion to version of application "iTunes"
@@ -153,11 +155,7 @@ on MainMagic(userDroppedFile, droppedFile)
 	end repeat
 	
 	if itunesVersionIsSupported is false then
-		if (is_interactive) then
-			set scriptAction to button returned of (display dialog "iTunes is at version " & itunesVersion & return & return & "It is unknown if this version of iTunes will work with this script." & return & return & "You may abort now, or try running the script anyway." buttons {"Abort", "Continue"} default button "Abort") as text
-		else
-			error "iTunes is at version " & itunesVersion & ". It is unknown if this version of iTunes will work with this script."
-		end if
+		set scriptAction to button returned of (display dialog "iTunes is at version " & itunesVersion & return & return & "It is unknown if this version of iTunes will work with this script." & return & return & "You may abort now, or try running the script anyway." buttons {"Abort", "Continue"} default button "Abort") as text
 	end if
 	
 	if scriptAction is "Continue" then
@@ -209,16 +207,11 @@ on MainMagic(userDroppedFile, droppedFile)
 			
 			--PREP-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------PREP--
 			
-			if is_interactive then
-				--Ask user if they want to perform a dry run, and give them a chance to cancel
-				set scriptRunMode to button returned of (display dialog "Would you like to preform a ''dry run'' of the script?" & return & return & "A ''dry run'' will run through every step, EXCEPT actually creating the Apple IDs." buttons {"Actually Create Apple IDs", "Dry Run", "Cancel"}) as text
-				if scriptRunMode is "Actually Create Apple IDs" then set dryRun to false
-				if scriptRunMode is "Dry Run" then set dryRun to true
-				if scriptRunMode is "Cancel" then set scriptAction to "Abort"
-			else
-				set dryRun to false
-			end if
-			
+			--Ask user if they want to perform a dry run, and give them a chance to cancel
+			set scriptRunMode to button returned of (display dialog "Would you like to preform a ''dry run'' of the script?" & return & return & "A ''dry run'' will run through every step, EXCEPT actually creating the Apple IDs." buttons {"Actually Create Apple IDs", "Dry Run", "Cancel"}) as text
+			if scriptRunMode is "Actually Create Apple IDs" then set dryRun to false
+			if scriptRunMode is "Dry Run" then set dryRun to true
+			if scriptRunMode is "Cancel" then set scriptAction to "Abort"
 			
 			--CREATE IDS-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------CREATE IDS--
 			if scriptAction is not "Abort" then
@@ -311,16 +304,14 @@ on MainMagic(userDroppedFile, droppedFile)
 				--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------Display dialog boxes that confirm the exit status of the script
 				
 				activate
+				if scriptAction is "Abort" then display dialog "Script was aborted" buttons {"OK"}
+				if scriptAction is "Stop" then display dialog "Dry run completed" buttons {"OK"}
+				if scriptAction is "Continue" then display dialog "Script Completed Successfully" buttons {"OK"}
 				
-				if is_interactive then
-					if scriptAction is "Abort" then display dialog "Script was aborted" buttons {"OK"}
-					if scriptAction is "Stop" then display dialog "Dry run completed" buttons {"OK"}
-					if scriptAction is "Continue" then display dialog "Script Completed Successfully" buttons {"OK"}
-				end if
 				
 				--Fix for multiple positive outcomes
 				if itunesVersionIsSupported is false then --If the script was run against an unsupported version of iTunes...
-					if scriptAction is "Continue" and is_interactive then --And it wasn't aborted...
+					if scriptAction is "Continue" then --And it wasn't aborted...
 						if button returned of (display dialog "Would you like to add iTunes Version " & itunesVersion & " to the list of supported iTunes versions?" buttons {"Yes", "No"} default button "No") is "Yes" then --...then ask the user if they want to add the current version of iTunes to the supported versions list
 							set supportedItunesVersions to supportedItunesVersions & itunesVersion
 							display dialog "iTunes version " & itunesVersion & " succesfully added to list of supported versions."
@@ -359,9 +350,6 @@ on loadUsersFile(userDroppedFile, chosenFile)
 				set item columnVerifyLoopCounter of findResults to item 2 of item columnVerifyLoopCounter of findResults --Remove the verification information and set the item to just the column number
 			else --If a column is missing
 				--Ask the user what they would like to do
-				
-				if not is_interactive then error "The script was unable to locate the " & item columnVerifyLoopCounter of listOfColumnsToFind & " column. The script cannot continue without this information."
-				
 				set missingColumnResolution to button returned of (display dialog "The script was unable to locate the " & item columnVerifyLoopCounter of listOfColumnsToFind & " column. The script cannot continue without this information." & return & return & "What would you like to do?" buttons {"Abort Script", "Manually Locate Column"}) as text
 				
 				--If the user chose to abort
@@ -592,11 +580,7 @@ on TestCsvFile(chosenFile)
 		if chosenFileKind is "public.comma-separated-values-text" then
 			return yes
 		else
-			if is_interactive then
-				display dialog "Silly " & (word 1 of the long user name of (system info)) & ", that file is not a .CSV!" buttons "Oops, my bad"
-			else
-				error "File provided not a CSV vile."
-			end if
+			display dialog "Silly " & (word 1 of the long user name of (system info)) & ", that file is not a .CSV!" buttons "Oops, my bad"
 			return no
 		end if
 	end if
@@ -620,11 +604,7 @@ on ParseCsvFile(fileContents)
 		set AppleScript's text item delimiters to delimitersOnCall --Set Applescript's delimiters back to whatever they were when this handler was called
 		return parsedFileContents --Return our fancy parsed contents
 	on error
-		if is_interactive then
-			display dialog "Woah! Um, that's not supposed to happen." & return & return & "Something goofed up bad when I tried to read the file!" buttons "Ok, I'll take a look at the file"
-		else
-			error "Something goofed up bad when I tried to read the file!"
-		end if
+		display dialog "Woah! Um, that's not supposed to happen." & return & return & "Something goofed up bad when I tried to read the file!" buttons "Ok, I'll take a look at the file"
 		return fileContents
 	end try
 end ParseCsvFile
@@ -648,30 +628,32 @@ on verifyPage(expectedElementString, expectedElementLocation, expectedElementCou
 		set elementCount to count every UI element of UI element 1 of scroll area 1 of splitter group 1 of splitter group 1 of window 1 of application process "iTunes"
 		
 		repeat with timeoutLoopCounter from 1 to verificationTimeout --Loop will be ended before reaching verificationTimeout if the expectedElementString is successfully located
+			
 			if timeoutLoopCounter is equal to verificationTimeout then return "unverified"
 			
 			if expectedElementCount is 0 then set expectedElementCount to elementCount --Use 0 to disable element count verification
 			
+			if expectedElementCount is not elementCount then set expectedElementCount to elementCount --Check all countable elements
+			
 			if elementCount is equal to expectedElementCount then
 				set everyTitle to {}
 				
+				if requiresGroup then
+					set elementToTest to UI element expectedElementLocation of group 1 of UI element 1 of scroll area 1 of splitter group 1 of splitter group 1 of window 1 of application process "iTunes"
+				else
+					set elementToTest to UI element expectedElementLocation of UI element 1 of scroll area 1 of splitter group 1 of splitter group 1 of window 1 of application process "iTunes"
+				end if
+				
+				set elementProperties to properties of elementToTest
+				
 				try
-					if requiresGroup then
-						set elementToTest to UI element expectedElementLocation of group 1 of UI element 1 of scroll area 1 of splitter group 1 of splitter group 1 of window 1 of application process "iTunes"
-					else
-						set elementToTest to UI element expectedElementLocation of UI element 1 of scroll area 1 of splitter group 1 of splitter group 1 of window 1 of application process "iTunes"
-					end if
-					
-					set elementProperties to properties of elementToTest
-					
 					set elementString to title of elementProperties
 					--set elementString to (text items 1 through (count of text items in expectedElementString) of elementString) as string
-					if elementString is equal to expectedElementString then
-						return "verified"
-					end if
-				on error
-					return "unverified"
 				end try
+				
+				if elementString is equal to expectedElementString then
+					return "verified"
+				end if
 			end if
 			delay 1
 		end repeat
@@ -683,14 +665,6 @@ end verifyPage
 on CheckForErrors()
 	if scriptAction is "Continue" then --This is to make sure a previous abort hasn't already been thrown.
 		if errorList is not {} then --If there are errors in the list
-			
-			if not is_interactive then
-				set errorMessage to "Errors were detected. "
-				repeat with loopCounter from 1 to (count of items in errorList)
-					set errorMessage to errorMessage & item loopCounter of errorList & " "
-				end repeat
-				error errorMessage
-			end if
 			
 			set errorAction to button returned of (display dialog "Errors were detected. What would you like to do?" buttons {"Abort", "Skip User", "Review"} default button "Review") as string
 			
@@ -799,18 +773,30 @@ on installIbooks()
 		-- AF 2012-05-14 Open location instead of .inetloc
 		tell application "iTunes" to open location ibooksLinkLocation
 		delay (masterDelay * processDelay)
-		set pageVerification to verifyPage("iBooks", "iBooks", 41, netDelay, true) --Looking for "iBooks", in the second element, on a page with a count of 41 elements, with a timeout of 5, and it requires the use of "group 1" for checking
+		set pageVerification to verifyPage("iBooks", "iBooks", 42, netDelay, true) --Looking for "iBooks", in the second element, on a page with a count of 39 elements, with a timeout of 5, and it requires the use of "group 1" for checking
 		
 		if pageVerification is "verified" then --Actually click the button to obtain iBooks
 			delay (masterDelay * processDelay)
 			tell application "System Events"
 				try
 					set freeButton to button 1 of group 2 of UI element 1 of scroll area 1 of splitter group 1 of splitter group 1 of window "iTunes" of application process "iTunes"
-					if description of freeButton is "$0.00 Free, iBooks" then
+					
+					-- check if free button is supported
+					set freeButtonDescription to description of freeButton
+					set freeButtonDescriptionIsSupported to false
+					repeat with freeButtonCheckLoopCounter from 1 to (count of items in supportedFreeButtonDescriptions)
+						if item freeButtonCheckLoopCounter of supportedFreeButtonDescriptions is equal to freeButtonDescription then
+							set freeButtonDescriptionIsSupported to true
+							exit repeat
+						end if
+					end repeat
+					
+					if freeButtonDescriptionIsSupported is true then
 						click freeButton
 					else
-						set errorList to errorList & "Unable to locate install app button by its description."
+						set errorList to errorList & "Unable to locate supported free button by its description."
 					end if
+					
 				on error
 					set errorList to errorList & "Unable to locate install app button by its description."
 				end try
@@ -848,7 +834,19 @@ end ClickCreateAppleIDButton
 
 on ClickContinueOnPageOne()
 	delay (masterDelay * processDelay)
-	set pageVerification to verifyPage("Welcome to the iTunes Store", "Welcome to the iTunes Store", 12, netDelay, false) ----------Verify we are at page 1 of the Apple ID creation page
+	
+	--start localization
+	set curExpectedElementString to "Welcome to the iTunes Store"
+	set curExpectedElementLocation to "Welcome to the iTunes Store"
+	
+	if iTunesCountryCode is "POL" then
+		set curExpectedElementString to "Witamy w sklepie iTunes Store"
+		set curExpectedElementLocation to "Witamy w sklepie iTunes Store"
+	end if
+	--end localization
+	
+	set pageVerification to verifyPage(curExpectedElementString, curExpectedElementLocation, 12, netDelay, false) ----------Verify we are at page 1 of the Apple ID creation page
+	
 	if pageVerification is "verified" then
 		
 		try
@@ -874,21 +872,50 @@ end ClickContinueOnPageOne
 
 on AgreeToTerms()
 	delay (masterDelay * processDelay)
-	set pageVerification to verifyPage("Terms and Conditions and Apple Privacy Policy", "Terms and Conditions and Apple Privacy Policy", 16, netDelay, false) ----------Verify we are at page 1 of the Apple ID creation page
+	
+	--start localization
+	set curExpectedElementString to "Terms and Conditions and Apple Privacy Policy"
+	set curExpectedElementLocation to "Terms and Conditions and Apple Privacy Policy"
+	
+	if iTunesCountryCode is "POL" then
+		set curExpectedElementString to "Warunki oraz Ochrona prywatności firmy Apple"
+		set curExpectedElementLocation to "Warunki oraz Ochrona prywatności firmy Apple"
+	end if
+	
+	--end localization
+	
+	set pageVerification to verifyPage(curExpectedElementString, curExpectedElementLocation, 16, netDelay, false) ----------Verify we are at page 1 of the Apple ID creation page
+	
 	if pageVerification is "verified" then
 		tell application "System Events"
 			
 			--Check box
+			
+			--start localization
+			set curCheckBox to "I have read and agree to these terms and conditions."
+			set curCheckBoxNum to 4
+			
+			if iTunesCountryCode is "POL" then
+				set curCheckBox to "Aby móc używać tej usługi, zapoznaj się z przedstawionymi warunkami i zasadami oraz wyraź na nie zgodę."
+				set curCheckBoxNum to 5
+			end if
+			if iTunesCountryCode is "FRA" then
+				set curCheckBox to "I have read and agree to these terms and conditions."
+				set curCheckBoxNum to 5
+			end if
+			--end localization
+			
 			try
-				set agreeCheckbox to checkbox "I have read and agree to these terms and conditions." of group 4 of UI element 1 of scroll area 1 of splitter group 1 of splitter group 1 of window 1 of application process "iTunes"
+				set agreeCheckbox to checkbox curCheckBox of group curCheckBoxNum of UI element 1 of scroll area 1 of splitter group 1 of splitter group 1 of window 1 of application process "iTunes"
 				set buttonVerification to title of agreeCheckbox
-				if buttonVerification is "I have read and agree to these terms and conditions." then
+				
+				if buttonVerification is curCheckBox then
 					click agreeCheckbox
 				else
-					set errorList to errorList & "Unable to locate and check box ''I have read and agree to these terms and conditions.''"
+					set errorList to errorList & "Unable to locate and check box  #1 ''I have read and agree to these terms and conditions.''"
 				end if
 			on error
-				set errorList to errorList & "Unable to locate and check box ''I have read and agree to these terms and conditions.''"
+				set errorList to errorList & "Unable to locate and check box #2 ''I have read and agree to these terms and conditions.''"
 			end try
 			
 			--delay (masterDelay * processDelay) --We need to pause a second for System Events to realize we have checked the box
@@ -1011,8 +1038,17 @@ on ProvideAppleIdDetails(appleIdEmail, appleIdPassword, appleIdSecretQuestion1, 
 				-----------
 				tell me to FillInField("Optional Rescue Email", text field "rescue@example.com" of group 11 of theForm, rescueEmail)
 				-----------
-				tell me to FillInPopup("Month", pop up button 1 of group 1 of group 13 of theForm, userBirthMonth, 12)
-				tell me to FillInPopup("Day", pop up button 1 of group 2 of group 13 of theForm, userBirthDay, 31)
+				--start localization
+				set curMonthPos to 1
+				set curDayPos to 2
+				if iTunesCountryCode is "FRA" then
+					set curMonthPos to 2
+					set curDayPos to 1
+				end if
+				--end localization
+				
+				tell me to FillInPopup("Month", pop up button 1 of group curMonthPos of group 13 of theForm, userBirthMonth, 12)
+				tell me to FillInPopup("Day", pop up button 1 of group curDayPos of group 13 of theForm, userBirthDay, 31)
 				tell me to FillInField("Year", text field "Year" of group 3 of group 13 of theForm, userBirthYear)
 				-----------
 				set releaseCheckbox to checkbox "New releases and additions to the iTunes Store." of group 15 of theForm
@@ -1052,49 +1088,77 @@ on ProvidePaymentDetails(userFirstName, userLastName, addressStreet, addressCity
 			tell application "System Events"
 				click radio button "None" of radio group 1 of theForm
 			end tell
+		end if
+		
+		--Wait for the page to change after selecting payment type
+		set checkFrequency to 0.25 --How often (in seconds) the iTunes LCD will be checked to see if iTunes is busy loading the page
+		
+		repeat
+			set lcdStatus to GetItunesStatusUntillLcd("Does Not Match", itunesAccessingString, 4, "times. Check for:", (netDelay * (1 / checkFrequency)), "intervals of", checkFrequency, "seconds")
+			if lcdStatus is "Matched" then exit repeat
+			delay masterDelay
+		end repeat
+		
+		tell application "System Events"
+			try
+				set frontmost of application process "iTunes" to true --Verify that iTunes is the front window before performing keystroke event
+				set focused of pop up button 1 of group 1 of group 7 of theForm to true
+				keystroke "Mr"
+			on error
+				set errorList to errorList & "Unable to set ''Title' to 'Mr.'"
+			end try
+			-----------
+			try
+				set value of text field "First name" of group 1 of group 8 of theForm to userFirstName
+			on error
+				set errorList to errorList & "Unable to set ''First Name'' field to " & userFirstName
+			end try
+			-----------
+			try
+				set value of text field "Last name" of group 2 of group 8 of theForm to userLastName
+			on error
+				set errorList to errorList & "Unable to set ''Last Name'' field to " & userLastName
+			end try
+			-----------
+			try
+				set value of text field "Street" of group 1 of group 9 of theForm to addressStreet
+			on error
+				set errorList to errorList & "Unable to set ''Street Address'' field to " & addressStreet
+			end try
+			-----------
+			--start localization
+			set curCityFieldName to "City"
+			set curCityFieldPos to 1
+			if iTunesCountryCode is "POL" then
+				set curCityFieldName to "Town"
+				set curCityFieldPos to 2
+			end if
+			if iTunesCountryCode is "FRA" then
+				set curCityFieldName to "Town"
+				set curCityFieldPos to 2
+			end if
 			
-			--Wait for the page to change after selecting payment type
-			set checkFrequency to 0.25 --How often (in seconds) the iTunes LCD will be checked to see if iTunes is busy loading the page
 			
-			repeat
-				set lcdStatus to GetItunesStatusUntillLcd("Does Not Match", itunesAccessingString, 4, "times. Check for:", (netDelay * (1 / checkFrequency)), "intervals of", checkFrequency, "seconds")
-				if lcdStatus is "Matched" then exit repeat
-				delay masterDelay
-			end repeat
+			--end localization
+			try
+				set value of text field curCityFieldName of group curCityFieldPos of group 10 of theForm to addressCity
+			on error
+				set errorList to errorList & "Unable to set ''City'' field to " & addressCity
+			end try
+			-----------
+			--start localization
+			set enableProvince to true
+			if iTunesCountryCode is "POL" then
+				set enableProvince to false
+			end if
+			if iTunesCountryCode is "FRA" then
+				set enableProvince to false
+			end if
 			
-			tell application "System Events"
-				try
-					set frontmost of application process "iTunes" to true --Verify that iTunes is the front window before performing keystroke event
-					set focused of pop up button 1 of group 1 of group 7 of theForm to true
-					keystroke "Mr"
-				on error
-					set errorList to errorList & "Unable to set ''Title' to 'Mr.'"
-				end try
-				-----------
-				try
-					set value of text field "First name" of group 1 of group 8 of theForm to userFirstName
-				on error
-					set errorList to errorList & "Unable to set ''First Name'' field to " & userFirstName
-				end try
-				-----------
-				try
-					set value of text field "Last name" of group 2 of group 8 of theForm to userLastName
-				on error
-					set errorList to errorList & "Unable to set ''Last Name'' field to " & userLastName
-				end try
-				-----------
-				try
-					set value of text field "Street" of group 1 of group 9 of theForm to addressStreet
-				on error
-					set errorList to errorList & "Unable to set ''Street Address'' field to " & addressStreet
-				end try
-				-----------
-				try
-					set value of text field "City" of group 1 of group 10 of theForm to addressCity
-				on error
-					set errorList to errorList & "Unable to set ''City'' field to " & addressCity
-				end try
-				-----------
+			
+			--end localization
+			
+			if enableProvince is true then
 				try
 					set frontmost of application process "iTunes" to true --Verify that iTunes is the front window before performking keystroke event
 					set focused of pop up button "Select a state" of group 2 of group 10 of theForm to true
@@ -1102,61 +1166,80 @@ on ProvidePaymentDetails(userFirstName, userLastName, addressStreet, addressCity
 				on error
 					set errorList to errorList & "Unable to set ''State'' drop-down to " & addressState
 				end try
-				-----------
-				try
-					set value of text field "Zip" of group 3 of group 10 of theForm to addressZip
-				on error
-					set errorList to errorList & "Unable to set ''Zip Code'' field to " & addressZip
-				end try
-				-----------
+			end if
+			-----------
+			--start localization
+			
+			set curPostalCodeFieldName to "Zip"
+			set curPostalCodeFieldPos to 3
+			set enableAreaCode to true
+			if iTunesCountryCode is "POL" then
+				set curPostalCodeFieldName to "Postcode"
+				set curPostalCodeFieldPos to 1
+			end if
+			if iTunesCountryCode is "FRA" then
+				set curPostalCodeFieldName to "Postcode"
+				set curPostalCodeFieldPos to 1
+				set enableAreaCode to false
+			end if
+			
+			--end localization
+			
+			try
+				set value of text field curPostalCodeFieldName of group curPostalCodeFieldPos of group 10 of theForm to addressZip
+			on error
+				set errorList to errorList & "Unable to set ''Postal Code'' field to " & addressZip
+			end try
+			-----------
+			if enableAreaCode is true then
 				try
 					set value of text field "Area code" of group 1 of group 11 of theForm to phoneAreaCode
 				on error
 					set errorList to errorList & "Unable to set ''Area Code'' field to " & phoneAreaCode
 				end try
+				
 				-----------
 				try
 					set value of text field "Phone" of group 2 of group 11 of theForm to phoneNumber
 				on error
 					set errorList to errorList & "Unable to set ''Phone Number'' field to " & phoneNumber
 				end try
-				-----------
-				
-				my CheckForErrors()
-				
-				if dryRun is true then --Pause to make sure all the fields filled properly
-					set dryRunSucess to button returned of (display dialog "Did everything fill in properly?" buttons {"Yes", "No"}) as text
-					if dryRunSucess is "No" then
-						set scriptAction to button returned of (display dialog "What would you like to do?" buttons {"Abort", "Continue"}) as text
-					end if
+			else
+				try
+					set value of text field "Phone" of group 1 of group 11 of theForm to phoneNumber
+				on error
+					set errorList to errorList & "Unable to set ''Phone Number'' field to " & phoneNumber
+				end try
+			end if
+			
+			-----------
+			
+			my CheckForErrors()
+			
+			if dryRun is true then --Pause to make sure all the fields filled properly
+				set dryRunSucess to button returned of (display dialog "Did everything fill in properly?" buttons {"Yes", "No"}) as text
+				if dryRunSucess is "No" then
+					set scriptAction to button returned of (display dialog "What would you like to do?" buttons {"Abort", "Continue"}) as text
 				end if
-				
-				if dryRun is false then --Click the "Create Apple ID" button as long as we aren't in "Dry Run" mode
-					if scriptAction is "Continue" then --Continue as long as no errors occurred
-						try
-							click button "Create Apple ID" of theForm
-						on error
-							set errorList to errorList & "Unable to click ''Create Apple ID'' button."
-						end try
-					end if --End "Continue if no errors" statement
-				else --If we are doing a dry run then...
-					set dryRunChoice to button returned of (display dialog "Completed. Would you like to stop the script now, continue ''dry running'' with the next user in the CSV (if applicable), or run the script ''for real'' starting with the first user?" buttons {"Stop Script", "Continue Dry Run", "Run ''For Real''"}) as text
-					if dryRunChoice is "Stop Script" then set scriptAction to "Stop"
-					if dryRunChoice is "Run ''For Real''" then
-						set currentUserNumber to 0
-						set dryRun to false
-					end if
-				end if --End "dry Run" if statement
-				
-			end tell --End "System Events" tell
+			end if
 			
-		else --(If page didn't verify)
-			set errorList to errorList & "Unable to verify that the ''Provide a Payment Method'' page is open and fill its contents."
+			if dryRun is false then --Click the "Create Apple ID" button as long as we aren't in "Dry Run" mode
+				if scriptAction is "Continue" then --Continue as long as no errors occurred
+					try
+						click button "Create Apple ID" of theForm
+					on error
+						set errorList to errorList & "Unable to click ''Create Apple ID'' button."
+					end try
+				end if --End "Continue if no errors" statement
+			else --If we are doing a dry run then...
+				set dryRunChoice to button returned of (display dialog "Completed. Would you like to stop the script now, continue ''dry running'' with the next user in the CSV (if applicable), or run the script ''for real'' starting with the first user?" buttons {"Stop Script", "Continue Dry Run", "Run ''For Real''"}) as text
+				if dryRunChoice is "Stop Script" then set scriptAction to "Stop"
+				if dryRunChoice is "Run ''For Real''" then
+					set currentUserNumber to 0
+					set dryRun to false
+				end if
+			end if --End "dry Run" if statement
 			
-			tell application "System Events"
-				set theForm to UI element 1 of scroll area 1 of splitter group 1 of splitter group 1 of window 1 of application process "iTunes"
-				if (count of static text of theForm) is 2 then set errorList to errorList & value of static text 2 of theForm
-			end tell
-		end if
+		end tell --End "System Events" tell
 	end if --End main error check IF
 end ProvidePaymentDetails
